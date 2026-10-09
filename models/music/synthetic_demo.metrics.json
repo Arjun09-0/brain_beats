@@ -1,0 +1,11 @@
+{
+  "train_loss": [
+    6.292107200622558,
+    5.8654783248901365,
+    5.4255016326904295,
+    4.903351306915283
+  ],
+  "checkpoint": "models\\music\\synthetic_demo.pt",
+  "files_used": 64,
+  "examples": 157
+}

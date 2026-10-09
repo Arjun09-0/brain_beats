@@ -59,3 +59,15 @@ loaders, user-supplied files will belong in `data/raw/deap/` and
 
 The eventual real-headset path will consume an LSL stream (for example, a Muse
 published through `muselsl`). Hardware is not required for the mock pipeline.
+
+## Phase 3: music generator
+
+Fetch the documented corpus, then train the compact demo checkpoint:
+
+```powershell
+git clone --depth 1 https://github.com/narcisse-dev/classical_ancient_midifiles.git data/raw/classical_ancient_midifiles
+python -m backend.app.music.train --epochs 4 --limit 64
+python -m backend.app.music.infer --latent -0.75 -0.75 0 0.75 0 0 0 0 0 0 0 0 --output reports/calm.mid
+```
+
+`infer` writes MIDI and, when `pretty_midi`'s built-in sine-wave synthesis works, a WAV preview beside it. The model uses FiLM with the Phase 2-compatible 12-D latent; tempo, density, key, and mode are explicitly documented in `PROGRESS.md`.

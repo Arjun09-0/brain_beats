@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .venv/
+data/raw/classical_ancient_midifiles/
 data/raw/deap/*
 !data/raw/deap/.gitkeep
 data/raw/seed/*
@@ -14,5 +15,9 @@ models/*
 models/encoder/*
 !models/encoder/synthetic_demo.pt
 !models/encoder/synthetic_demo.metrics.json
+!models/music/
+models/music/*
+!models/music/synthetic_demo.pt
+!models/music/synthetic_demo.metrics.json
 backend/storage/*
 !backend/storage/.gitkeep

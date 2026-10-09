@@ -51,3 +51,91 @@ session-level and has no artifact-rejection pipeline yet.
   run used 48 mock recordings, 14 epochs, and seed 123; training loss fell from
   1.391 to 0.336 and its mock-preset validation label accuracy was 1.00. The
   loadable artifact is `models/encoder/synthetic_demo.pt`.
+
+## Phase 3 — Music generator — complete
+
+### Corpus decision (recorded before training)
+
+- **Chosen corpus:** the public GitHub repository
+  `narcisse-dev/classical_ancient_midifiles`
+  (`https://github.com/narcisse-dev/classical_ancient_midifiles`). It was
+  successfully shallow-cloned in this environment on 2026-09-04: 4,723 MIDI
+  files, about 26 MB. The reproducible demo uses the first 64 valid files in
+  sorted path order, which keeps CPU training quick while using real MIDI
+  material. The downloaded corpus is ignored by Git; its source URL and slice
+  policy are retained here instead.
+
+### Conditioning and inspectable latent-to-music contract
+
+- **Mechanism:** FiLM. The 12-D Phase 2 encoder vector is projected into a
+  per-feature scale and bias which modulate the music GRU hidden state before
+  pitch and duration prediction. The same vector also drives the explicit,
+  deterministic control layer below; therefore the requested output controls
+  are not left to an opaque learned correlation.
+
+| Latent coordinate(s) | Music control | Exact mapping |
+| --- | --- | --- |
+| `z[0]` | tempo | `clip(110 + 40*z[0], 60, 170)` BPM |
+| `z[1]` | note density | `clip(2.5 + 1.5*z[1], 1, 4)` notes/beat; event spacing is its reciprocal |
+| `z[2]` | key root | nearest `round(6 + 5*z[2])`, clipped to chromatic pitch class 0–11 (C=0) |
+| `z[3]` | mode | `z[3] >= 0` selects major; otherwise natural minor |
+| `z[4:12]` | learned phrase variation | FiLM-only controls for pitch/duration logits; no claimed semantic interpretation |
+
+- **Architecture:** `FiLMMusicGenerator` combines a 24-dimensional embedding for
+  128 MIDI pitches, a single-layer GRU (hidden size 48), and a linear FiLM
+  projection layer mapping the 12-D latent vector to 48 scale and 48 bias values
+  (`hidden * (1 + scale) + bias`). Two separate linear heads predict next-pitch
+  logits (128 classes) and note duration buckets (4 classes: <0.25s, 0.25–0.75s,
+  0.75–1.5s, >1.5s).
+- **Harmonic constraint:** Generated pitches are clamped and snapped to the
+  nearest pitch matching the active scale (major or natural minor) rooted at
+  `key_root` across MIDI notes 36 to 84 (C2 to C6).
+- **Sequence windowing:** MIDI files are parsed into monophonic pitch sequences
+  and extracted into 32-step sliding context windows predicting the next pitch
+  and duration token.
+- **Verification:** `pytest backend/tests` passes (9 tests total). Unit tests
+  confirm that calm and agitated preset latent vectors produce statistically
+  and numerically distinct tempo (>= 50 BPM difference) and note density
+  (>= 2 notes/beat difference), and that wrong-sized latent vectors trigger
+  a `ValueError`.
+- **Reproducible demo run:** Trained on the first 64 valid files from
+  `data/raw/classical_ancient_midifiles` (157 training sequence windows, 4 epochs,
+  batch size 32, Adam lr=0.002, seed 123). Cross-entropy loss decreased from
+  6.292 to 4.903 (`[6.292, 5.865, 5.426, 4.903]`). Loadable artifacts are
+  `models/music/synthetic_demo.pt` and `models/music/synthetic_demo.metrics.json`.
+- **Inference CLI:** `python -m backend.app.music.infer` produces standard MIDI
+  and synthesized 16 kHz sine-wave audio previews (`reports/calm.mid`,
+  `reports/calm.wav`, `reports/agitated.mid`, `reports/agitated.wav`).
+
+### Design notes
+
+Separating deterministic macro controls (`tempo`, `note density`, `key`, `mode`)
+from learned FiLM pitch/duration generation prevents uncontrolled model drift.
+Users and clinical researchers can directly inspect and trust why tempo and
+density shift based on the EEG latent state, while the neural network handles
+melodic phrasing.
+
+### Mocked versus real
+
+The MIDI dataset is real historical classical MIDI. Training latent vectors `z`
+in the demo script are standard normal samples; at inference time, real or
+mock latent outputs from the Phase 2 encoder are fed directly into the
+generator without modification.
+
+### Known limitations
+
+The generator currently produces monophonic melodic lines. Polyphony, chord
+progressions, and multi-track orchestration are deferred to future work.
+Audio preview synthesis uses `pretty_midi`'s built-in sinusoidal generator;
+soundfont/wavetable synthesis is not yet integrated.
+
+## Phase 4 — Closed-loop integration and API — next up
+
+- **Objective:** Connect the Phase 1 EEG preprocessor, Phase 2 encoder, and
+  Phase 3 music generator into an end-to-end real-time biofeedback loop.
+- **FastAPI backend:** Expose endpoints for session initialization, streaming
+  chunk ingestion, real-time latent/state inspection, and continuous music
+  generation.
+- **Storage:** Persist user session telemetry, state transitions, and generated
+  music history in `backend/storage/`.
+
