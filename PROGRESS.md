@@ -129,13 +129,38 @@ progressions, and multi-track orchestration are deferred to future work.
 Audio preview synthesis uses `pretty_midi`'s built-in sinusoidal generator;
 soundfont/wavetable synthesis is not yet integrated.
 
-## Phase 4 — Closed-loop integration and API — next up
+## Phase 4 — Closed-loop integration and API — complete
 
-- **Objective:** Connect the Phase 1 EEG preprocessor, Phase 2 encoder, and
-  Phase 3 music generator into an end-to-end real-time biofeedback loop.
-- **FastAPI backend:** Expose endpoints for session initialization, streaming
-  chunk ingestion, real-time latent/state inspection, and continuous music
-  generation.
-- **Storage:** Persist user session telemetry, state transitions, and generated
-  music history in `backend/storage/`.
+### Architecture and Closed-Loop Flow
+- **Orchestration:** `ClosedLoopEngine` ([closed_loop.py](file:///c:/EEG_music_config/backend/app/closed_loop.py))
+  integrates Phase 1 synthetic multi-channel EEG generation with 4-second
+  sliding-window epoching, Phase 2 `EEGStateEncoder` CNN+LSTM latent feature
+  extraction (producing the 12-D latent vector `z`), and Phase 3
+  `FiLMMusicGenerator` macro musical controls and GRU melodic sequencing.
+- **FastAPI backend:** `backend/app/main.py` provides:
+  - REST endpoints for session lifecycle (`/api/sessions/start`, `/api/sessions/stop`),
+    dynamic preset switching (`/api/sessions/preset`), biofeedback target goal setting
+    (`/api/sessions/goal`), single-step evaluation (`/api/sessions/step`), external
+    EEG ingestion (`/api/sessions/ingest`), and artifact downloads (MIDI, WAV).
+  - High-performance WebSocket endpoint (`/ws/live`) delivering push telemetry
+    frames at ~2-second loop cadence to all connected frontends.
+- **Storage & Telemetry:** `SessionStore` ([session_store.py](file:///c:/EEG_music_config/backend/app/storage/session_store.py))
+  persists session metadata in `backend/storage/sessions/{session_id}/metadata.json`,
+  streaming frames in `telemetry.jsonl`, and generated `.mid` and `.wav` audio clips
+  under `music/`.
+- **Interactive Web Dashboard:** Modern, glassmorphic dark neurotech UI in
+  `backend/app/static/`:
+  - 8-Channel real-time EEG Oscilloscope canvas (Fp1 through O2).
+  - Welch PSD frequency band power meters (Delta, Theta, Alpha, Beta, Gamma) and
+    Alpha/Beta coherence ratio.
+  - 2D Russell Circumplex Emotion plane (Valence vs Arousal) with animated trajectory.
+  - 12-Dimensional FiLM latent vector sparkbar visualization.
+  - Generative music studio with real-time tempo metronome pulse, note density gauge,
+    harmonic key and mode snapping, and real-time scrolling piano roll canvas.
+  - Dual audio playback: low-latency in-browser Web Audio API synthesizer with reverb,
+    plus server-rendered 16 kHz WAV streaming.
+  - Dynamic preset switching buttons (🌿 Calm / Alpha Boost, ⚖️ Neutral, ⚡ Aroused / Beta Surge)
+    and session telemetry exporter.
+- **Verification:** Full test suite passes (12 tests total across preprocessing,
+  encoder, music generator, closed loop engine, session storage, and FastAPI REST/WebSocket endpoints).
 

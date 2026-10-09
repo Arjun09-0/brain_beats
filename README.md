@@ -71,3 +71,38 @@ python -m backend.app.music.infer --latent -0.75 -0.75 0 0.75 0 0 0 0 0 0 0 0 --
 ```
 
 `infer` writes MIDI and, when `pretty_midi`'s built-in sine-wave synthesis works, a WAV preview beside it. The model uses FiLM with the Phase 2-compatible 12-D latent; tempo, density, key, and mode are explicitly documented in `PROGRESS.md`.
+
+## Phase 4: Full End-to-End Product & Web Dashboard
+
+Launch the complete closed-loop biofeedback server:
+
+```powershell
+python -m backend.app.main
+```
+
+or via Uvicorn:
+
+```powershell
+uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+```
+
+Open your browser to:
+```text
+http://localhost:8000
+```
+
+### Dashboard Features
+- **Live 8-Channel Oscilloscope:** Real-time waveform rendering of simulated EEG signals (Fp1–O2).
+- **Spectral Band Power Analyzer:** Instant Welch PSD power bars for Delta, Theta, Alpha, Beta, and Gamma, with Alpha/Beta ratio metrics.
+- **Russell Circumplex Emotion Plane:** Real-time 2D tracking of user Valence vs. Arousal state.
+- **12-D Latent FiLM Modulation:** Inspect all 12 dimensions driving musical macro and micro parameters.
+- **Adaptive Music Studio:** Live BPM gauge with animated metronome ring, note density tracker, harmonic scale snapping, and scrolling real-time piano roll.
+- **Dual Audio Engine:** In-browser low-latency polyphonic Web Audio API synthesizer + server-rendered 16 kHz WAV streaming.
+- **One-Click State Transitions:** Toggle between **🌿 Calm (Alpha Boost)**, **⚖️ Neutral**, and **⚡ Aroused (Beta Surge)** presets on the fly.
+- **Artifact Downloads:** Download recorded .mid and .wav audio clips or export complete session telemetry JSON.
+
+### Run All Automated Tests
+
+```powershell
+pytest backend/tests
+```
